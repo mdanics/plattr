@@ -65,7 +65,7 @@ export class Map extends Component {
       );
       this.setState({region: region});
       console.log(this.state.region);
-    }).catch();
+    });
 
     firestore.collection("reviews").get().then((querySnapshot) => {
       let markers = [];
@@ -88,7 +88,7 @@ export class Map extends Component {
       // }];
 
       this.setState({markers: markers})
-    }).catch()  ;
+    }).catch((e2)=>{console.log(e2)});
 
 
     // We should detect when scrolling has stopped then animate
