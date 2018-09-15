@@ -13,6 +13,7 @@ import {
   Alert,
   Button,
   TouchableHighlight,
+  Modal,
 } from "react-native";
 const { width, height } = Dimensions.get("window");
 
@@ -21,14 +22,6 @@ import { firestore } from "./firebase"
 
 const CARD_HEIGHT = height / 4;
 const CARD_WIDTH = CARD_HEIGHT - 50;
-
-
-const Images = [
-  "https://i.imgur.com/sNam9iJ.jpg" ,
-  "https://amp.businessinsider.com/images/5a7dc169d03072af008b4bf2-750-562.jpg" ,
-   "https://i.imgur.com/UDrH0wm.jpg" ,
-  "https://i.imgur.com/Ka8kNST.jpg",
-];
 
 export class Map extends Component {
   state = {
@@ -45,6 +38,7 @@ export class Map extends Component {
     this.index = 0;
     this.animation = new Animated.Value(0);
   }
+
   async componentDidMount() {
 
     navigator.geolocation.getCurrentPosition((position) => {
@@ -67,15 +61,30 @@ export class Map extends Component {
       console.log(this.state.region);
     });
 
-    firestore.collection("reviews").get().then((querySnapshot) => {
+
+    firestore.collection("reviews").onSnapshot((snapshot) => {
       let markers = [];
 
-      querySnapshot.forEach(function(doc) {
+      snapshot.forEach(function(doc) {
+
+        if ('coordinates' in doc.data() && 'latitude' in doc.data().coordinates && 'longitude' in doc.data().coordinates)
           markers.push(formatReviewDocument(doc))
+
       });
 
-
-
+      snapshot.docChanges().forEach(function(change) {
+            if (change.type === "added") {
+                console.log("New city: ", change.doc.data());
+              }
+            if (change.type === "modified") {
+                console.log("Modified city: ", change.doc.data());
+                alert("modified");
+            }
+            if (change.type === "removed") {
+                console.log("Removed city: ", change.doc.data());
+                alert("removed");
+            }
+        });
 
       // let markers = [{
       //   coordinate: {
@@ -87,8 +96,10 @@ export class Map extends Component {
       //   image: Images[1],
       // }];
 
-      this.setState({markers: markers})
-    }).catch((e2)=>{console.log(e2)});
+      this.setState({markers: markers});
+    }).catch(error => {
+      console.log("vb", error);
+    });
 
 
     // We should detect when scrolling has stopped then animate
@@ -120,6 +131,12 @@ export class Map extends Component {
     });
   }
 
+  addNewRating = () => {
+    Alert.alert("hello")
+  };
+
+
+
   render() {
     const interpolations = this.state.markers.map((marker, index) => {
       const inputRange = [
@@ -142,6 +159,7 @@ export class Map extends Component {
 
     return (
       <View style={styles.container}>
+
         <MapView
           ref={map => this.map = map}
           initialRegion={this.state.region}
@@ -169,11 +187,6 @@ export class Map extends Component {
           })}
         </MapView>
 
-        <View style={styles.header}>
-          <Text> Plattr </Text>
-        </View>
-
-
         <Animated.ScrollView
           horizontal
           scrollEventThrottle={1}
@@ -197,14 +210,7 @@ export class Map extends Component {
           {this.state.markers.map((marker, index) => (
             <TouchableOpacity style={styles.card} key={index} onPress={()=> {
 
-              const ref = firestore.collection("reviews");
-              ref.add({
-                title : marker.title,
-                description: marker.description
-              })
-
               Alert.alert(marker.title)
-
 
               }}>
               <Image
@@ -221,6 +227,11 @@ export class Map extends Component {
             </TouchableOpacity>
           ))}
         </Animated.ScrollView>
+
+
+
+        <Button title={"hello"} onPress={() => {this.addNewRating()}}/>
+
       </View>
     );
   }
@@ -303,7 +314,6 @@ AppRegistry.registerComponent("mapfocus", () => Map);
 
 const formatReviewDocument = (doc) => {
   const data = doc.data();
-
   return {
     title: data.title,
     description: data.description,
