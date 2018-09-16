@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import MapView from "react-native-maps";
 import {
   AppRegistry,
   StyleSheet,
@@ -10,25 +9,34 @@ import {
   Image,
   Dimensions,
   TouchableOpacity,
-  Alert,
-  Button,
-  TouchableHighlight,
-  Modal,
 } from "react-native";
-const { width, height } = Dimensions.get("window");
 
+import MapView from "react-native-maps";
+import * as firebase from 'firebase';
+import 'firebase/firestore';
 import { firestore } from "./firebase"
 
+
+
+const Images = [
+  { uri: "https://i.imgur.com/sNam9iJ.jpg" },
+  { uri: "https://i.imgur.com/N7rlQYt.jpg" },
+  { uri: "https://i.imgur.com/UDrH0wm.jpg" },
+  { uri: "https://i.imgur.com/Ka8kNST.jpg" }
+]
+
+const { width, height } = Dimensions.get("window");
 
 const CARD_HEIGHT = height / 4;
 const CARD_WIDTH = CARD_HEIGHT - 50;
 
 export class Map extends Component {
   state = {
-    markers: [],
+    markers: [
+    ],
     region: {
-      latitude: 45.52220671242907,
-      longitude: -122.6653281029795,
+      latitude: 43.471582,
+      longitude: -80.538287,
       latitudeDelta: 0.04864195044303443,
       longitudeDelta: 0.040142817690068,
     },
@@ -39,28 +47,8 @@ export class Map extends Component {
     this.animation = new Animated.Value(0);
   }
 
-  async componentDidMount() {
 
-    navigator.geolocation.getCurrentPosition((position) => {
-      console.log("lat", position.coords.latitude, "lng", position.coords.longitude);
-
-      let region = Object.assign({}, this.state.region);    //creating copy of object
-      region.latitude = position.coords.latitude;
-      region.longitude = position.coords.longitude;
-
-      this.map.animateToRegion(
-        {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          latitudeDelta: this.state.region.latitudeDelta,
-          longitudeDelta: this.state.region.longitudeDelta,
-        },
-        5
-      );
-      this.setState({region: region});
-      console.log(this.state.region);
-    });
-
+  componentDidMount() {
 
     firestore.collection("reviews").onSnapshot((snapshot) => {
       let markers = [];
@@ -75,36 +63,38 @@ export class Map extends Component {
       snapshot.docChanges().forEach(function(change) {
             if (change.type === "added") {
                 console.log("New city: ", change.doc.data());
+                animateToReviewDocLocation(change.doc);
               }
             if (change.type === "modified") {
                 console.log("Modified city: ", change.doc.data());
-                alert("modified");
+                animateToReviewDocLocation(change.doc);
+
             }
             if (change.type === "removed") {
                 console.log("Removed city: ", change.doc.data());
-                alert("removed");
             }
         });
-
-      // let markers = [{
-      //   coordinate: {
-      //     latitude: 43.43142848128524,
-      //     longitude: -80.54408286416437,
-      //   },
-      //   title: "Second Best Place",
-      //   description: "This is the second best place in Portland",
-      //   image: Images[1],
-      // }];
-
+    //
+    //   // let markers = [{
+    //   //   coordinate: {
+    //   //     latitude: 43.43142848128524,
+    //   //     longitude: -80.54408286416437,
+    //   //   },
+    //   //   title: "Second Best Place",
+    //   //   description: "This is the second best place in Portland",
+    //   //   image: Images[1],
+    //   // }];
+    //
       this.setState({markers: markers});
-    }).catch(error => {
-      console.log("vb", error);
     });
+
+
 
 
     // We should detect when scrolling has stopped then animate
     // We should just debounce the event listener here
     this.animation.addListener(({ value }) => {
+      console.log("val1", value);
       let index = Math.floor(value / CARD_WIDTH + 0.3); // animate 30% away from landing on the next item
       if (index >= this.state.markers.length) {
         index = this.state.markers.length - 1;
@@ -114,7 +104,9 @@ export class Map extends Component {
       }
 
       clearTimeout(this.regionTimeout);
+
       this.regionTimeout = setTimeout(() => {
+
         if (this.index !== index) {
           this.index = index;
           const { coordinate } = this.state.markers[index];
@@ -124,16 +116,31 @@ export class Map extends Component {
               latitudeDelta: this.state.region.latitudeDelta,
               longitudeDelta: this.state.region.longitudeDelta,
             },
-            350
+            900
           );
         }
       }, 10);
     });
-  }
 
-  addNewRating = () => {
-    Alert.alert("hello")
-  };
+    const animateToReviewDocLocation = (doc) => {
+    if ('coordinates' in doc.data() && 'latitude' in doc.data().coordinates && 'longitude' in doc.data().coordinates)
+
+      this.regionTimeout = setTimeout(() => {
+
+        let review = formatReviewDocument(doc);
+
+        this.map.animateToRegion(
+          {
+            latitude: review.coordinate.latitude,
+            longitude: review.coordinate.longitude,
+            latitudeDelta: this.state.region.latitudeDelta,
+            longitudeDelta: this.state.region.longitudeDelta,
+          },
+          900
+        );
+      }, 10);
+    }
+  }
 
 
 
@@ -159,7 +166,6 @@ export class Map extends Component {
 
     return (
       <View style={styles.container}>
-
         <MapView
           ref={map => this.map = map}
           initialRegion={this.state.region}
@@ -208,11 +214,7 @@ export class Map extends Component {
           contentContainerStyle={styles.endPadding}
         >
           {this.state.markers.map((marker, index) => (
-            <TouchableOpacity style={styles.card} key={index} onPress={()=> {
-
-              Alert.alert(marker.title)
-
-              }}>
+            <View style={styles.card} key={index}>
               <Image
                 source={ {uri: marker.image}}
                 style={styles.cardImage}
@@ -224,14 +226,9 @@ export class Map extends Component {
                   {marker.description}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </View>
           ))}
         </Animated.ScrollView>
-
-
-
-        <Button title={"hello"} onPress={() => {this.addNewRating()}}/>
-
       </View>
     );
   }
@@ -240,13 +237,6 @@ export class Map extends Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    position: "absolute",
-    top: 15,
-    left: 0,
-    right: 0,
-    alignItems: 'center'
   },
   scrollView: {
     position: "absolute",
@@ -310,7 +300,7 @@ const styles = StyleSheet.create({
   },
 });
 
-AppRegistry.registerComponent("mapfocus", () => Map);
+AppRegistry.registerComponent("mapfocus2", () => Profile);
 
 const formatReviewDocument = (doc) => {
   const data = doc.data();

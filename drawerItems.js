@@ -63,9 +63,12 @@ class DrawerItems extends React.Component<Props, State> {
               }
               active={this.state.drawerItemIndex === index}
               onPress={() => {
-
                 this._setDrawerItem(index);
-                navigation.navigate('Profile');
+                if (index == 0){
+                  navigation.navigate('Home');
+                } else if (index == 1) {
+                  navigation.navigate('Profile');
+                }
                 }
               }
             />
