@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 
-import MapView from "react-native-maps";
+import MapView, {Marker} from "react-native-maps";
 import * as firebase from 'firebase';
 import 'firebase/firestore';
 import { firestore } from "./firebase"
@@ -40,6 +40,10 @@ export class Map extends Component {
       latitudeDelta: 0.04864195044303443,
       longitudeDelta: 0.040142817690068,
     },
+    currentLocation: {
+      latitude: null,
+      longitude: null,
+    }
   };
 
   componentWillMount() {
@@ -50,6 +54,37 @@ export class Map extends Component {
 
   componentDidMount() {
 
+    //sets map location and marker to current location
+
+    navigator.geolocation.getCurrentPosition((position) => {
+      console.log("lat", position.coords.latitude, "lng", position.coords.longitude);
+
+      let region = Object.assign({}, this.state.region);    //creating copy of object
+      region.latitude = position.coords.latitude;
+      region.longitude = position.coords.longitude;
+
+      this.map.animateToRegion(
+        {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          latitudeDelta: this.state.region.latitudeDelta,
+          longitudeDelta: this.state.region.longitudeDelta,
+        },
+        5
+      );
+
+      let currentLocation = this.state.currentLocation;
+      currentLocation.latitude = position.coords.latitude;
+      currentLocation.longitude = position.coords.longitude;
+
+
+      this.setState({region: region, currentLocation: currentLocation});
+      console.log(this.state.region);
+
+    });
+
+
+    //loads reviews from firebase
     firestore.collection("reviews").onSnapshot((snapshot) => {
       let markers = [];
 
@@ -122,6 +157,8 @@ export class Map extends Component {
       }, 10);
     });
 
+
+    //animates to new/modified reviews
     const animateToReviewDocLocation = (doc) => {
     if ('coordinates' in doc.data() && 'latitude' in doc.data().coordinates && 'longitude' in doc.data().coordinates)
 
@@ -164,6 +201,19 @@ export class Map extends Component {
       return { scale, opacity };
     });
 
+    let currentLocationMarker;
+
+    if (this.state.currentLocation.longitude != null) {
+      currentLocationMarker =
+
+        <Marker
+            coordinate={this.state.currentLocation}
+            title={"marker.title"}
+            description={"marker.description"}
+        />
+    }
+
+
     return (
       <View style={styles.container}>
         <MapView
@@ -183,7 +233,7 @@ export class Map extends Component {
               opacity: interpolations[index].opacity,
             };
             return (
-              <MapView.Marker key={index} coordinate={marker.coordinate}>
+              <MapView.Marker key={index} coordinate={marker.coordinate} title={marker.title} description={marker.description}>
                 <Animated.View style={[styles.markerWrap, opacityStyle]}>
                   <Animated.View style={[styles.ring, scaleStyle]} />
                   <View style={styles.marker} />
@@ -191,6 +241,10 @@ export class Map extends Component {
               </MapView.Marker>
             );
           })}
+
+          {currentLocationMarker}
+
+
         </MapView>
 
         <Animated.ScrollView
@@ -297,6 +351,21 @@ const styles = StyleSheet.create({
     position: "absolute",
     borderWidth: 1,
     borderColor: "rgba(130,4,150, 0.5)",
+  },
+  currentLocationMarker: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,255, 0.9)",
+  },
+  currentLocationRing: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(130,4,150, 0.3)",
+    position: "absolute",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,255, 0.5)",
   },
 });
 
