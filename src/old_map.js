@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import MapView from "react-native-maps";
 import {
   AppRegistry,
   StyleSheet,
@@ -9,63 +10,36 @@ import {
   Image,
   Dimensions,
   TouchableOpacity,
+  Alert,
+  Button,
+  TouchableHighlight,
+  Modal,
 } from "react-native";
-
-import MapView, {Marker} from "react-native-maps";
-import * as firebase from 'firebase';
-import 'firebase/firestore';
-import { firestore } from "./firebase";
-
-import DialogWithLongText from './reviewDialog';
-
-
-
-
-const Images = [
-  { uri: "https://i.imgur.com/sNam9iJ.jpg" },
-  { uri: "https://i.imgur.com/N7rlQYt.jpg" },
-  { uri: "https://i.imgur.com/UDrH0wm.jpg" },
-  { uri: "https://i.imgur.com/Ka8kNST.jpg" }
-]
-
 const { width, height } = Dimensions.get("window");
+
+import { firestore } from "./firebase"
+
 
 const CARD_HEIGHT = height / 4;
 const CARD_WIDTH = CARD_HEIGHT - 50;
 
 export class Map extends Component {
   state = {
-    markers: [
-    ],
+    markers: [],
     region: {
-      latitude: 43.471582,
-      longitude: -80.538287,
+      latitude: 45.52220671242907,
+      longitude: -122.6653281029795,
       latitudeDelta: 0.04864195044303443,
       longitudeDelta: 0.040142817690068,
     },
-    currentLocation: {
-      latitude: null,
-      longitude: null,
-    },
-    dialogVisible: false,
-    dialogTitle: "",
-    dialogDescription: "",
-    dialogRating: 0,
   };
-
-  _openDialog = (title, description, rating) => this.setState({ dialogVisible: true, dialogTitle: title, dialogDescription: description, dialogRating: rating});
-  _closeDialog = () => this.setState({ dialogVisible: false });
-
 
   componentWillMount() {
     this.index = 0;
     this.animation = new Animated.Value(0);
   }
 
-
-  componentDidMount() {
-
-    //sets map location and marker to current location
+  async componentDidMount() {
 
     navigator.geolocation.getCurrentPosition((position) => {
       console.log("lat", position.coords.latitude, "lng", position.coords.longitude);
@@ -83,19 +57,11 @@ export class Map extends Component {
         },
         5
       );
-
-      let currentLocation = this.state.currentLocation;
-      currentLocation.latitude = position.coords.latitude;
-      currentLocation.longitude = position.coords.longitude;
-
-
-      this.setState({region: region, currentLocation: currentLocation});
+      this.setState({region: region});
       console.log(this.state.region);
-
     });
 
 
-    //loads reviews from firebase
     firestore.collection("reviews").onSnapshot((snapshot) => {
       let markers = [];
 
@@ -109,38 +75,37 @@ export class Map extends Component {
       snapshot.docChanges().forEach(function(change) {
             if (change.type === "added") {
                 console.log("New city: ", change.doc.data());
-                animateToReviewDocLocation(change.doc);
               }
             if (change.type === "modified") {
                 console.log("Modified city: ", change.doc.data());
-                animateToReviewDocLocation(change.doc);
-
+                alert("modified");
             }
             if (change.type === "removed") {
                 console.log("Removed city: ", change.doc.data());
+                alert("removed");
             }
         });
-    //
-    //   // let markers = [{
-    //   //   coordinate: {
-    //   //     latitude: 43.43142848128524,
-    //   //     longitude: -80.54408286416437,
-    //   //   },
-    //   //   title: "Second Best Place",
-    //   //   description: "This is the second best place in Portland",
-    //   //   image: Images[1],
-    //   // }];
-    //
+
+      // let markers = [{
+      //   coordinate: {
+      //     latitude: 43.43142848128524,
+      //     longitude: -80.54408286416437,
+      //   },
+      //   title: "Second Best Place",
+      //   description: "This is the second best place in Portland",
+      //   image: Images[1],
+      // }];
+
       this.setState({markers: markers});
+    }).catch(error => {
+      console.log("vb", error);
     });
-
-
 
 
     // We should detect when scrolling has stopped then animate
     // We should just debounce the event listener here
     this.animation.addListener(({ value }) => {
-      console.log("val1", value);
+      console.log("val", value);
       let index = Math.floor(value / CARD_WIDTH + 0.3); // animate 30% away from landing on the next item
       if (index >= this.state.markers.length) {
         index = this.state.markers.length - 1;
@@ -150,50 +115,33 @@ export class Map extends Component {
       }
 
       clearTimeout(this.regionTimeout);
-
       this.regionTimeout = setTimeout(() => {
-
         if (this.index !== index) {
           this.index = index;
-          const { coordinate } = this.state.markers[index];
+          const { coordinate } = this.state.markers[index].coordinate;
+          console.log("coord2", coordinate);
           this.map.animateToRegion(
             {
               ...coordinate,
               latitudeDelta: this.state.region.latitudeDelta,
               longitudeDelta: this.state.region.longitudeDelta,
             },
-            900
+            350
           );
         }
       }, 10);
     });
-
-
-    //animates to new/modified reviews
-    const animateToReviewDocLocation = (doc) => {
-    if ('coordinates' in doc.data() && 'latitude' in doc.data().coordinates && 'longitude' in doc.data().coordinates)
-
-      this.regionTimeout = setTimeout(() => {
-
-        let review = formatReviewDocument(doc);
-
-        this.map.animateToRegion(
-          {
-            latitude: review.coordinate.latitude,
-            longitude: review.coordinate.longitude,
-            latitudeDelta: this.state.region.latitudeDelta,
-            longitudeDelta: this.state.region.longitudeDelta,
-          },
-          900
-        );
-      }, 10);
-    }
   }
+
+  addNewRating = () => {
+    Alert.alert("hello")
+  };
 
 
 
   render() {
     const interpolations = this.state.markers.map((marker, index) => {
+      console.log("a");
       const inputRange = [
         (index - 1) * CARD_WIDTH,
         index * CARD_WIDTH,
@@ -212,22 +160,9 @@ export class Map extends Component {
       return { scale, opacity };
     });
 
-    let currentLocationMarker;
-
-    if (this.state.currentLocation.longitude != null) {
-      currentLocationMarker =
-
-        <Marker
-            coordinate={this.state.currentLocation}
-            title={"marker.title"}
-            description={"marker.description"}
-        />
-    }
-
-    const visible = this.state.dialogVisible;
-
     return (
       <View style={styles.container}>
+
         <MapView
           ref={map => this.map = map}
           initialRegion={this.state.region}
@@ -245,7 +180,7 @@ export class Map extends Component {
               opacity: interpolations[index].opacity,
             };
             return (
-              <MapView.Marker key={index} coordinate={marker.coordinate} title={marker.rating.toString()} description={"Rating"}>
+              <MapView.Marker key={index} coordinate={marker.coordinate}>
                 <Animated.View style={[styles.markerWrap, opacityStyle]}>
                   <Animated.View style={[styles.ring, scaleStyle]} />
                   <View style={styles.marker} />
@@ -253,10 +188,6 @@ export class Map extends Component {
               </MapView.Marker>
             );
           })}
-
-          {currentLocationMarker}
-
-
         </MapView>
 
         <Animated.ScrollView
@@ -280,13 +211,14 @@ export class Map extends Component {
           contentContainerStyle={styles.endPadding}
         >
           {this.state.markers.map((marker, index) => (
-            <TouchableOpacity style={styles.card} key={index} onPress={()=>{
+            <TouchableOpacity style={styles.card} key={index} onPress={()=> {
 
-              this.props.navigation.navigate('Review', {review: marker})
-
-              // this._openDialog(marker.title, marker.description, marker.rating);
+              Alert.alert(marker.title)
 
             }}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>5</Text>
+              </View>
               <Image
                 source={ {uri: marker.image}}
                 style={styles.cardImage}
@@ -302,8 +234,9 @@ export class Map extends Component {
           ))}
         </Animated.ScrollView>
 
-      <DialogWithLongText visible={visible} close={this._closeDialog} title={this.state.dialogTitle} description={this.state.dialogDescription} rating={this.state.dialogRating}/>
 
+
+        <Button title={"hello"} onPress={() => {this.addNewRating()}}/>
 
       </View>
     );
@@ -311,8 +244,27 @@ export class Map extends Component {
 }
 
 const styles = StyleSheet.create({
+  badge: {
+    right: 0,
+    left: 0,
+    top: 0,
+    alignItems: 'center',
+
+    padding: 20,
+  },
+  badgeText: {
+    color: "#007f7f",
+    // size: 20,
+  },
   container: {
     flex: 1,
+  },
+  header: {
+    position: "absolute",
+    top: 15,
+    left: 0,
+    right: 0,
+    alignItems: 'center'
   },
   scrollView: {
     position: "absolute",
@@ -326,12 +278,13 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 10,
-    elevation: 2,
+    elevation: 5,
+    borderRadius: 10,
     backgroundColor: "#FFF",
     marginHorizontal: 10,
     shadowColor: "#000",
-    shadowRadius: 5,
-    shadowOpacity: 0.3,
+    shadowRadius: 50,
+    shadowOpacity: 1,
     shadowOffset: { x: 2, y: -2 },
     height: CARD_HEIGHT,
     width: CARD_WIDTH,
@@ -374,24 +327,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(130,4,150, 0.5)",
   },
-  currentLocationMarker: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "rgba(0,0,255, 0.9)",
-  },
-  currentLocationRing: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "rgba(130,4,150, 0.3)",
-    position: "absolute",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,255, 0.5)",
-  },
 });
 
-AppRegistry.registerComponent("mapfocus2", () => Profile);
+AppRegistry.registerComponent("mapfocus", () => Map);
 
 const formatReviewDocument = (doc) => {
   const data = doc.data();
@@ -403,6 +341,5 @@ const formatReviewDocument = (doc) => {
       longitude: data.coordinates.longitude,
     },
     image: data.imageUrl,
-    rating: data.rating,
   }
 };

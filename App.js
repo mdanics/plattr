@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Map } from './src/map';
-import { Provider as PaperProvider } from 'react-native-paper';
+import { Provider as PaperProvider, DefaultTheme } from 'react-native-paper';
 import { createDrawerNavigator } from 'react-navigation';
 import DrawerItems from './drawerItems';
 import {Platform, StyleSheet} from 'react-native';
@@ -17,10 +17,22 @@ export const App2 = createDrawerNavigator(
   }
 );
 
+const theme = {
+  ...DefaultTheme,
+  roundness: 2,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: '#97E4E0',
+    accent: '#2e91e4',
+  }
+};
+
 export default class App extends React.Component {
   render() {
     return (
-      <App2/>
+      <PaperProvider theme={theme}>
+        <App2/>
+      </PaperProvider>
     );
   }
 }

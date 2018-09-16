@@ -33,9 +33,8 @@ type State = {
 const DrawerItemsData = [
   { label: 'Explore', icon: 'search', key: 0 },
   { label: 'Profile', icon: 'person', key: 1 },
-  { label: 'Sent mail', icon: 'send', key: 2 },
-  { label: 'Colored label', icon: 'color-lens', key: 3 },
-  { label: 'A very long title that will be truncated', icon: 'delete', key: 4 },
+  { label: 'Favourite Dishes', icon: 'star', key: 2 },
+  { label: 'History', icon: 'history', key: 3 },
 ];
 
 class DrawerItems extends React.Component<Props, State> {
@@ -51,7 +50,7 @@ class DrawerItems extends React.Component<Props, State> {
     const navigation = this.props.navigation;
     return (
       <View style={[styles.drawerContent, { backgroundColor: colors.surface }]}>
-        <Drawer.Section title="Example items">
+        <Drawer.Section title="Plattr | Explore Food">
           {DrawerItemsData.map((props, index) => (
             <Drawer.Item
               {...props}
@@ -68,31 +67,14 @@ class DrawerItems extends React.Component<Props, State> {
                   navigation.navigate('Home');
                 } else if (index == 1) {
                   navigation.navigate('Profile');
+                } else if (index == 3) {
+                  navigation.navigate('History');
                 }
                 }
               }
             />
           ))}
 
-        </Drawer.Section>
-
-        <Drawer.Section title="Preferences">
-          <TouchableRipple onPress={this.props.toggleTheme}>
-            <View style={styles.preference}>
-              <Text>Dark Theme</Text>
-              <View pointerEvents="none">
-                <Switch value={this.props.isDarkTheme} />
-              </View>
-            </View>
-          </TouchableRipple>
-          <TouchableRipple onPress={this.props.toggleRTL}>
-            <View style={styles.preference}>
-              <Text>RTL</Text>
-              <View pointerEvents="none">
-                <Switch value={this.props.isRTL} />
-              </View>
-            </View>
-          </TouchableRipple>
         </Drawer.Section>
       </View>
     );
